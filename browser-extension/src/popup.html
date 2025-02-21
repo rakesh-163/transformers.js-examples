@@ -1,21 +1,32 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Transformers.js | Sample Browser Extension</title>
-
-    <!-- Load styles -->
-    <link rel="stylesheet" href="popup.css" />
-  </head>
-
-  <body>
-    <div class="container">
-      <h1>Transformers.js</h1>
-      <h2>Run 🤗 Transformers in a Browser Extension!</h2>
-      <input id="text" placeholder="Enter text here" />
-      <pre id="output"></pre>
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Text Analysis</title>
+  <link rel="stylesheet" href="popup.css">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&family=Roboto+Mono&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="container">
+    <h1>Text Analysis</h1>
+    
+    <div class="input-section">
+      <h2>Enter Text</h2>
+      <textarea id="text" rows="4" placeholder="Enter text to analyze..."></textarea>
+      <button id="analyze-button">Analyze</button>
     </div>
-  </body>
+
+    <div class="output-section">
+      <div class="result-box">
+        <h2>Sentiment</h2>
+        <div id="sentiment-output" class="output"></div>
+      </div>
+
+      <div class="result-box">
+        <h2>Embeddings</h2>
+        <div id="embedding-output" class="output"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="popup.js"></script>
+</body>
 </html>

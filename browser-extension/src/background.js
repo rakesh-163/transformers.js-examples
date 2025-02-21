@@ -3,17 +3,13 @@
 import { pipeline } from "@huggingface/transformers";
 
 import { CONTEXT_MENU_ITEM_ID } from "./constants.js";
+import { ACTIONS } from './constants.js';
 
 /**
- * Wrap the pipeline construction in a Singleton class to ensure:
- * (1) the pipeline is only loaded once, and
- * (2) the pipeline can be loaded lazily (only when needed).
+ * Create separate Singleton classes for each model to manage them independently
  */
-class Singleton {
+class ClassifierSingleton {
   static async getInstance(progress_callback) {
-    // Return a function which does the following:
-    // - Load the pipeline if it hasn't been loaded yet
-    // - Run the pipeline, waiting for previous executions to finish if needed
     return (this.fn ??= async (...args) => {
       this.instance ??= pipeline(
         "text-classification",
@@ -32,18 +28,47 @@ class Singleton {
   }
 }
 
-// Create generic classify function, which will be reused for the different types of events.
+class EmbedderSingleton {
+  static async getInstance(progress_callback) {
+    return (this.fn ??= async (...args) => {
+      this.instance ??= pipeline(
+        "feature-extraction",
+        "Xenova/all-MiniLM-L6-v2",
+        {
+          progress_callback,
+          device: "webgpu",
+        },
+      );
+
+      return (this.promise_chain = (
+        this.promise_chain ?? Promise.resolve()
+      ).then(async () => (await this.instance)(...args)));
+    });
+  }
+}
+
+// Create separate functions for classification and embedding
 const classify = async (text) => {
-  // Get the pipeline instance. This will load and build the model when run for the first time.
-  const classifier = await Singleton.getInstance((data) => {
+  const classifier = await ClassifierSingleton.getInstance((data) => {
     // You can track the progress of the pipeline creation here.
     // e.g., you can send `data` back to the UI to indicate a progress bar
     // console.log(data)
   });
 
-  // Run the model on the input text
   const result = await classifier(text);
   return result;
+};
+
+const embed = async (text) => {
+  const embedder = await EmbedderSingleton.getInstance((data) => {
+    // Progress tracking for embedder
+  });
+
+  const output = await embedder(text, { pooling: 'mean', normalize: true });
+  return {
+    embedding: Array.from(output.data),  // Convert Float32Array to regular array for message passing
+    dimensions: output.dims
+  };
 };
 
 ////////////////////// 1. Context Menus //////////////////////
@@ -85,19 +110,29 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 //
 // Listen for messages from the UI, process it, and send the result back.
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action !== "classify") return; // Ignore messages that are not meant for classification.
-
   // Run model prediction asynchronously
   (async function () {
-    // Perform classification
-    const result = await classify(message.text);
-
-    // Send response back to UI
-    sendResponse(result);
+    try {
+      let result;
+      
+      switch (message.action) {
+        case ACTIONS.CLASSIFY:
+          result = await classify(message.text);
+          sendResponse({ success: true, data: result });
+          break;
+        case ACTIONS.EMBED:
+          result = await embed(message.text);
+          sendResponse({ success: true, data: result });
+          break;
+        default:
+          sendResponse({ success: false, error: `Unknown action: ${message.action}` });
+      }
+    } catch (error) {
+      console.error('Error in background script:', error);
+      sendResponse({ success: false, error: error.message });
+    }
   })();
 
-  // return true to indicate we will send a response asynchronously
-  // see https://stackoverflow.com/a/46628145 for more information
-  return true;
+  return true; // Indicates async response
 });
 //////////////////////////////////////////////////////////////
