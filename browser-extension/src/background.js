@@ -6,28 +6,8 @@ import { CONTEXT_MENU_ITEM_ID } from "./constants.js";
 import { ACTIONS } from './constants.js';
 
 /**
- * Create separate Singleton classes for each model to manage them independently
+ * Singleton class to manage the embedding model
  */
-class ClassifierSingleton {
-  static async getInstance(progress_callback) {
-    return (this.fn ??= async (...args) => {
-      this.instance ??= pipeline(
-        "text-classification",
-        "Xenova/distilbert-base-uncased-finetuned-sst-2-english",
-        {
-          progress_callback,
-          device: "webgpu",
-          dtype: "q4",
-        },
-      );
-
-      return (this.promise_chain = (
-        this.promise_chain ?? Promise.resolve()
-      ).then(async () => (await this.instance)(...args)));
-    });
-  }
-}
-
 class EmbedderSingleton {
   static async getInstance(progress_callback) {
     return (this.fn ??= async (...args) => {
@@ -110,22 +90,13 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 //
 // Listen for messages from the UI, process it, and send the result back.
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  // Run model prediction asynchronously
   (async function () {
     try {
-      let result;
-      
-      switch (message.action) {
-        case ACTIONS.CLASSIFY:
-          result = await classify(message.text);
-          sendResponse({ success: true, data: result });
-          break;
-        case ACTIONS.EMBED:
-          result = await embed(message.text);
-          sendResponse({ success: true, data: result });
-          break;
-        default:
-          sendResponse({ success: false, error: `Unknown action: ${message.action}` });
+      if (message.action === ACTIONS.EMBED) {
+        const result = await embed(message.text);
+        sendResponse({ success: true, data: result });
+      } else {
+        sendResponse({ success: false, error: `Unknown action: ${message.action}` });
       }
     } catch (error) {
       console.error('Error in background script:', error);

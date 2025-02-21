@@ -5,15 +5,8 @@ import { ACTIONS } from './constants.js';
 
 // DOM Elements
 const textInput = document.getElementById('text');
-const sentimentOutput = document.getElementById('sentiment-output');
 const embeddingOutput = document.getElementById('embedding-output');
 const analyzeButton = document.getElementById('analyze-button');
-
-// Helper to format sentiment results
-const formatSentiment = (result) => {
-  const { label, score } = result[0];
-  return `${label} (${(score * 100).toFixed(2)}%)`;
-};
 
 // Helper to format embedding results
 const formatEmbedding = (result) => {
@@ -22,36 +15,23 @@ const formatEmbedding = (result) => {
   return `Dimensions: ${dimensions.join('x')}\nFirst 5 values: [${preview.join(', ')}...]`;
 };
 
-// Function to analyze text
-const analyzeText = async (text) => {
+// Function to generate embeddings
+const generateEmbeddings = async (text) => {
   try {
-    // Clear previous outputs
-    sentimentOutput.textContent = 'Analyzing...';
     embeddingOutput.textContent = 'Calculating embeddings...';
     
-    // Run both analyses in parallel
-    const [sentimentResponse, embeddingResponse] = await Promise.all([
-      chrome.runtime.sendMessage({ action: ACTIONS.CLASSIFY, text }),
-      chrome.runtime.sendMessage({ action: ACTIONS.EMBED, text })
-    ]);
+    const response = await chrome.runtime.sendMessage({ 
+      action: ACTIONS.EMBED, 
+      text 
+    });
 
-    // Handle sentiment results
-    if (sentimentResponse.success) {
-      sentimentOutput.textContent = formatSentiment(sentimentResponse.data);
+    if (response.success) {
+      embeddingOutput.textContent = formatEmbedding(response.data);
     } else {
-      sentimentOutput.textContent = `Error: ${sentimentResponse.error}`;
+      embeddingOutput.textContent = `Error: ${response.error}`;
     }
-
-    // Handle embedding results
-    if (embeddingResponse.success) {
-      embeddingOutput.textContent = formatEmbedding(embeddingResponse.data);
-    } else {
-      embeddingOutput.textContent = `Error: ${embeddingResponse.error}`;
-    }
-
   } catch (error) {
-    sentimentOutput.textContent = 'Analysis failed';
-    embeddingOutput.textContent = 'Analysis failed';
+    embeddingOutput.textContent = 'Failed to generate embeddings';
     console.error('Analysis error:', error);
   }
 };
@@ -60,15 +40,16 @@ const analyzeText = async (text) => {
 analyzeButton.addEventListener('click', () => {
   const text = textInput.value.trim();
   if (text) {
-    analyzeText(text);
+    generateEmbeddings(text);
   }
 });
 
 textInput.addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
     const text = textInput.value.trim();
     if (text) {
-      analyzeText(text);
+      generateEmbeddings(text);
     }
   }
 });
