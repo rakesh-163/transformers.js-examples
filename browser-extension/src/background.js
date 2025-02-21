@@ -4,6 +4,8 @@ import { pipeline } from "@huggingface/transformers";
 
 import { CONTEXT_MENU_ITEM_ID } from "./constants.js";
 import { ACTIONS } from './constants.js';
+import { TEST_WORDS } from './utils.js';
+import { cosineSimilarity } from './utils.js';
 
 /**
  * Singleton class to manage the embedding model
@@ -44,10 +46,31 @@ const embed = async (text) => {
     // Progress tracking for embedder
   });
 
-  const output = await embedder(text, { pooling: 'mean', normalize: true });
+  // Get embedding for input text
+  const inputEmbedding = await embedder(text, { pooling: 'mean', normalize: true });
+  
+  // Get embeddings for all test words
+  const testEmbeddings = await Promise.all(
+    TEST_WORDS.map(word => 
+      embedder(word, { pooling: 'mean', normalize: true })
+    )
+  );
+
+  // Calculate similarities
+  const similarities = testEmbeddings.map((embedding, index) => ({
+    word: TEST_WORDS[index],
+    similarity: cosineSimilarity(
+      Array.from(inputEmbedding.data),
+      Array.from(embedding.data)
+    )
+  }));
+
+  // Sort by similarity
+  similarities.sort((a, b) => b.similarity - a.similarity);
+
   return {
-    embedding: Array.from(output.data),  // Convert Float32Array to regular array for message passing
-    dimensions: output.dims
+    mostSimilar: similarities[0],
+    allSimilarities: similarities
   };
 };
 

@@ -8,17 +8,23 @@ const textInput = document.getElementById('text');
 const embeddingOutput = document.getElementById('embedding-output');
 const analyzeButton = document.getElementById('analyze-button');
 
-// Helper to format embedding results
-const formatEmbedding = (result) => {
-  const { embedding, dimensions } = result;
-  const preview = embedding.slice(0, 5).map(n => n.toFixed(4));
-  return `Dimensions: ${dimensions.join('x')}\nFirst 5 values: [${preview.join(', ')}...]`;
+// Helper to format similarity results
+const formatSimilarities = (result) => {
+  const { mostSimilar, allSimilarities } = result;
+  
+  const header = `Most similar word: "${mostSimilar.word}" (${mostSimilar.similarity.toFixed(4)})\n\nAll similarities:`;
+  
+  const similarities = allSimilarities
+    .map(({ word, similarity }) => `${word}: ${similarity.toFixed(4)}`)
+    .join('\n');
+    
+  return `${header}\n${similarities}`;
 };
 
 // Function to generate embeddings
 const generateEmbeddings = async (text) => {
   try {
-    embeddingOutput.textContent = 'Calculating embeddings...';
+    embeddingOutput.textContent = 'Calculating similarities...';
     
     const response = await chrome.runtime.sendMessage({ 
       action: ACTIONS.EMBED, 
@@ -26,12 +32,12 @@ const generateEmbeddings = async (text) => {
     });
 
     if (response.success) {
-      embeddingOutput.textContent = formatEmbedding(response.data);
+      embeddingOutput.textContent = formatSimilarities(response.data);
     } else {
       embeddingOutput.textContent = `Error: ${response.error}`;
     }
   } catch (error) {
-    embeddingOutput.textContent = 'Failed to generate embeddings';
+    embeddingOutput.textContent = 'Failed to generate similarities';
     console.error('Analysis error:', error);
   }
 };
