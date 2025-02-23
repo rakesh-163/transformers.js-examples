@@ -6,4 +6,17 @@ export const cosineSimilarity = (vec1, vec2) => {
   return dotProduct / (mag1 * mag2);
 };
 
-export const TEST_WORDS = ['human', 'vegetable', 'fruit', 'vehicle', 'planet']; 
+export const TEST_WORDS = [
+  'human', 
+  'vegetable', 
+  'fruit', 
+  'vehicle', 
+  'planet', 
+  'puppy', 
+  'tree', 
+  'peanut butter', 
+  'flower', 
+  'honey', 
+  'software',
+  'devil', 
+  'elon musk']; 
